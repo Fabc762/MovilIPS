@@ -3,12 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Innovadores | Control de Tránsito - Campus Chiclayo</title>
+    <title>Innovadores | Control de Tránsito</title>
+    <link rel="icon" href="IP.png" type="image/png">
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
         :root {
@@ -43,6 +48,27 @@
             display: flex;
             height: 100vh;
             overflow: hidden;
+        }
+
+        #splash-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: white;
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease;
+        }
+
+        #splash-screen img {
+            max-width: 300px;
+            height: auto;
+        }
+
+        .hidden-splash {
+            opacity: 0;
+            pointer-events: none;
         }
 
         .sidebar {
@@ -92,21 +118,13 @@
             font-weight: 600;
             transition: all 0.3s ease;
             border-left: 4px solid transparent;
+            cursor: pointer;
         }
 
-        .nav-item:hover:not(.disabled), .nav-item.active {
+        .nav-item:hover, .nav-item.active {
             background-color: #f8fafc;
             color: var(--primary-blue);
             border-left-color: var(--primary-blue);
-        }
-
-        .nav-item.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .nav-item .material-icons-round {
-            font-size: 22px;
         }
 
         .team-box {
@@ -169,11 +187,6 @@
             box-shadow: var(--shadow-md);
         }
 
-        .top-header h2 {
-            font-size: 20px;
-            font-weight: 600;
-        }
-
         .dashboard-grid {
             padding: 24px;
             display: grid;
@@ -232,7 +245,7 @@
             top: 20px;
             right: 20px;
             display: grid;
-            grid-template-columns: repeat(6, 40px);
+            grid-template-columns: repeat(6, 40px); /* 6 Columnas para A,B,C,D,E,F */
             gap: 4px;
             background: rgba(0,0,0,0.4);
             padding: 8px;
@@ -257,13 +270,8 @@
             border: 1px solid rgba(255,255,255,0.3);
         }
 
-        .spot:hover {
-            transform: scale(1.05);
-        }
-
         .spot.green { background-color: var(--status-green); }
         .spot.red { background-color: var(--status-red); }
-        .spot.yellow { background-color: var(--status-yellow); color: var(--text-main); }
 
         .table-card {
             background: var(--bg-panel);
@@ -281,11 +289,7 @@
         .card-header h3 {
             color: var(--text-main);
             font-size: 18px;
-        }
-
-        .card-header p {
-            color: var(--text-muted);
-            font-size: 14px;
+            margin: 0;
         }
 
         table {
@@ -300,12 +304,11 @@
             padding: 12px 16px;
             font-size: 13px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
             border-bottom: 1px solid var(--border-color);
         }
 
         td {
-            padding: 16px;
+            padding: 12px 16px;
             border-bottom: 1px solid var(--border-color);
             vertical-align: middle;
             font-size: 14px;
@@ -316,7 +319,6 @@
             border-radius: 20px;
             font-size: 12px;
             font-weight: 600;
-            transition: 0.3s;
         }
 
         .badge.transit { background: #fee2e2; color: #991b1b; } 
@@ -338,57 +340,152 @@
         .btn-secondary { background: #f1f5f9; color: var(--text-main); border: 1px solid var(--border-color); }
         .btn-secondary:hover { background: #e2e8f0; }
 
-        .info-card {
-            background: var(--bg-panel);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--border-color);
-            padding: 20px;
+        .btn-disabled { background: #cbd5e1; color: #64748b; border: 1px solid var(--border-color); cursor: not-allowed; }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(3px);
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+            width: 320px;
+            max-width: 90%;
             display: flex;
             flex-direction: column;
             gap: 16px;
         }
 
-        .info-section {
-            border-left: 4px solid var(--primary-blue);
-            padding-left: 14px;
+        .input-placa {
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            text-align: center;
+            text-transform: uppercase;
+            font-weight: 600;
+            outline: none;
         }
 
-        .info-section.climate {
-            border-left-color: var(--status-green);
+        .input-placa:focus {
+            border-color: var(--primary-blue);
         }
 
-        .info-section h4 {
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--text-main);
-            margin-bottom: 4px;
+        .btn-close {
+            background: var(--status-red);
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
         }
 
-        .info-section p {
-            font-size: 13px;
-            color: var(--text-muted);
-            line-height: 1.4;
+        /* --- MEDIA QUERIES PARA CELULAR --- */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+                height: auto;
+                overflow-y: auto;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+                padding: 10px 15px;
+            }
+
+            .logo-container {
+                padding: 0;
+                border-bottom: none;
+            }
+
+            /* Ocultar elementos específicos en celular */
+            .nav-menu, .top-header, .map-toolbar, .team-box {
+                display: none !important;
+            }
+
+            .main-content {
+                overflow-y: visible;
+            }
+
+            .dashboard-grid {
+                display: flex;
+                flex-direction: column;
+                padding: 15px;
+                gap: 20px;
+            }
+
+            .map-card {
+                height: 350px;
+            }
+
+            .parking-grid {
+                transform: scale(0.85); /* Reduce un poco el mini mapa en celular */
+                transform-origin: top right;
+                top: 10px;
+                right: 10px;
+            }
+
+            .table-card > div {
+                overflow-x: auto;
+            }
+            
+            th, td {
+                white-space: nowrap;
+            }
         }
     </style>
 </head>
 <body>
 
+    <div id="splash-screen">
+        <img src="IP.png" alt="Innovation Program">
+    </div>
+
+    <div id="plateModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 style="color: var(--primary-blue);">Identificación de Vehículo</h3>
+            <p>Por favor, ingresa el número de tu placa para acceder al sistema y reservar un espacio.</p>
+            <input type="text" id="inputPlaca" class="input-placa" placeholder="EJ: ABC-123" maxlength="8">
+            <button class="btn-action btn-primary" onclick="registrarPlaca()">Entrar al Sistema</button>
+        </div>
+    </div>
+
+    <div id="timerModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 style="color: var(--primary-blue);">Verificación de Espacio</h3>
+            <p>¿Necesitas aún este espacio (<span id="timerSpaceId"></span>)?</p>
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 10px;">
+                <button class="btn-action btn-secondary" onclick="accionTemporizador('liberar')">Desocupar</button>
+                <button class="btn-action btn-primary" onclick="accionTemporizador('extender')">+ 30 Seg</button>
+            </div>
+        </div>
+    </div>
+
     <aside class="sidebar">
         <div class="logo-container">
-            <img src="https://static.wikia.nocookie.net/logopedia/images/7/7b/Innova_Schools_escudo.svg/revision/latest/scale-to-width-down/1200?cb=20200925143606&path-prefix=es" alt="Logo Innova">
+            <img src="innova.jpg" alt="Logo" onerror="this.src='https://via.placeholder.com/45'">
             <h1>Innova<br>Schools</h1>
         </div>
         <nav class="nav-menu">
-            <a href="#" class="nav-item active" onclick="activarMenu(this)">
-                <span class="material-icons-round">map</span> Mapa en Vivo
-            </a>
-            <a href="#" class="nav-item" onclick="activarMenu(this)">
-                <span class="material-icons-round">grid_view</span> Asignación de estacionamiento
-            </a>
-            <a href="#" class="nav-item disabled">
-                <span class="material-icons-round">warning_amber</span> Alertas en proceso
-            </a>
+            <a href="#" class="nav-item active" onclick="cambiarMenuActivo(event, this)"><span class="material-icons-round">map</span> Mapa Satelital</a>
+            <a href="#" class="nav-item" onclick="cambiarMenuActivo(event, this)"><span class="material-icons-round">grid_view</span> Asignación</a>
         </nav>
 
         <div class="team-box">
@@ -407,132 +504,273 @@
     </aside>
 
     <main class="main-content">
-        
         <header class="top-header">
-            <h2>Bienvenido, Operador de Tránsito</h2>
+            <h2>Panel Principal</h2>
         </header>
 
         <div class="dashboard-grid">
-            
             <div class="map-card">
                 <div class="map-toolbar">
-                    <button class="map-btn active" onclick="activarBotonMapa(this)">Satélite</button>
-                    <button class="map-btn" onclick="activarBotonMapa(this)">Zonas Asignadas</button>
+                    <button class="map-btn active" onclick="cambiarBotonMapa(this)">Satélite</button>
+                    <button class="map-btn" onclick="cambiarBotonMapa(this)">Zonas Asignadas</button>
                 </div>
                 <div class="map-container" id="mapa-gratis">
                     <div class="parking-grid" id="terreno-exterior"></div>
                 </div>
             </div>
 
-            <div class="table-card">
+            <div class="table-card" style="grid-column: 1;">
                 <div class="card-header">
-                    <h3>Lugares de Estacionamiento Libres</h3>
-                    <p>Sincronización en tiempo real con los cuadrantes del mapa satelital.</p>
+                    <h3>Lugares de Estacionamiento</h3>
                 </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Espacio ID</th>
-                            <th>Zona</th>
-                            <th>Estado Actual</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><strong>Estacionamiento A1</strong></td>
-                            <td>Terreno Exterior</td>
-                            <td><span class="badge parked">Libre</span></td>
-                            <td>
-                                <button class="btn-action btn-primary" onclick="gestionarEspacio(this, 'A1')">Reservar Espacio</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>Estacionamiento A2</strong></td>
-                            <td>Terreno Exterior</td>
-                            <td><span class="badge parked">Libre</span></td>
-                            <td>
-                                <button class="btn-action btn-primary" onclick="gestionarEspacio(this, 'A2')">Reservar Espacio</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>Estacionamiento A3</strong></td>
-                            <td>Terreno Exterior</td>
-                            <td><span class="badge transit">Ocupado</span></td>
-                            <td>
-                                <button class="btn-action btn-secondary" onclick="gestionarEspacio(this, 'A3')">Liberar Espacio</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="info-card">
-                <div class="card-header" style="margin-bottom: 4px;">
-                    <h3>Mejora del Tránsito Vehicular</h3>
-                    <p>Impacto estratégico del proyecto en los accesos del campus.</p>
-                </div>
-                
-                <div class="info-section">
-                    <h4>Tránsito en la entrada y salida del colegio</h4>
-                    <p>Al derivar los vehículos al terreno privado de manera organizada, se elimina la congestión en las puertas principales, liberando las vías públicas para un flujo escolar seguro y fluido.</p>
-                </div>
-
-                <div class="info-section climate">
-                    <h4>Acción por el clima</h4>
-                    <p>Reducir las colas de autos reduce el tiempo de motores encendidos en ralentí ("idle"). Menos tiempo buscando espacio se traduce en una reducción directa de emisiones de CO₂ alrededor del colegio.</p>
+                <div style="max-height: 380px; overflow-y: auto;">
+                    <table id="parkingTable">
+                        <thead>
+                            <tr>
+                                <th>Espacio ID</th>
+                                <th>Zona</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
+            <div class="table-card" style="grid-column: 2;">
+                <div class="card-header">
+                    <h3>Control de usuarios</h3>
+                </div>
+                <div style="max-height: 380px; overflow-y: auto;">
+                    <table id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>Vehículo en App</th>
+                                <th>Estado de Salida</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </main>
 
     <script>
-        function activarMenu(elemento) {
+        function cambiarMenuActivo(event, elemento) {
+            event.preventDefault();
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             elemento.classList.add('active');
         }
 
-        function activarBotonMapa(elemento) {
+        function cambiarBotonMapa(elemento) {
             document.querySelectorAll('.map-btn').forEach(el => el.classList.remove('active'));
             elemento.classList.add('active');
         }
 
-        function gestionarEspacio(btn, espacioId) {
-            const row = btn.closest('tr');
-            const badge = row.querySelector('.badge');
-            
-            const mapSpots = Array.from(document.querySelectorAll('.spot'));
-            const mapSpot = mapSpots.find(spot => spot.textContent === espacioId);
+        const firebaseConfig = {
+            apiKey: "AIzaSyCkrK_7WxbIqJL20uMssYx-1b3BS5punQI",
+            authDomain: "innovaparking-b7876.firebaseapp.com",
+            databaseURL: "https://innovaparking-b7876-default-rtdb.firebaseio.com",
+            projectId: "innovaparking-b7876",
+            storageBucket: "innovaparking-b7876.firebasestorage.app",
+            messagingSenderId: "1051587205965",
+            appId: "1:1051587205965:web:5d5c6406b70d1fc3e13504"
+        };
+        
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const database = firebase.database();
 
-            if (btn.classList.contains('btn-primary')) {
-                btn.className = 'btn-action btn-secondary';
-                btn.textContent = 'Liberar Espacio';
-                badge.className = 'badge transit';
-                badge.textContent = 'Ocupado';
+        // Se agregaron las series completas hasta la F
+        const espacios = [
+            'A1', 'A2', 'A3', 'A4', 'A5', 
+            'B1', 'B2', 'B3', 'B4', 'B5', 
+            'C1', 'C2', 'C3', 'C4', 'C5', 
+            'D1', 'D2', 'D3', 'D4', 'D5', 
+            'E1', 'E2', 'E3', 'E4', 'E5',
+            'F1', 'F2', 'F3', 'F4', 'F5'
+        ];
+        let temporizadoresLocales = {};
+        let espacioEnPregunta = null;
+        
+        let miPlaca = "";
+        let estadoGlobal = {};
+
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const splash = document.getElementById('splash-screen');
+                splash.classList.add('hidden-splash');
+                setTimeout(() => {
+                    splash.style.display = 'none';
+                    document.getElementById('plateModal').style.display = 'flex';
+                }, 500);
+            }, 2000);
+
+            generarEstructuraDOM();
+            inicializarMapa();
+            escucharFirebase();
+        });
+
+        function registrarPlaca() {
+            const input = document.getElementById('inputPlaca').value.trim().toUpperCase();
+            if(input.length >= 3) {
+                miPlaca = input;
+                document.getElementById('plateModal').style.display = 'none';
                 
-                if(mapSpot) {
-                    mapSpot.className = 'spot red';
-                    mapSpot.title = `Estacionamiento ${espacioId} - Ocupado`;
-                }
+                Object.keys(estadoGlobal).forEach(id => {
+                    if (estadoGlobal[id]) {
+                        sincronizarUI(id, estadoGlobal[id].estado, estadoGlobal[id].placa);
+                    }
+                });
             } else {
-                btn.className = 'btn-action btn-primary';
-                btn.textContent = 'Reservar Espacio';
-                badge.className = 'badge parked';
-                badge.textContent = 'Libre';
-                
-                if(mapSpot) {
-                    mapSpot.className = 'spot green';
-                    mapSpot.title = `Estacionamiento ${espacioId} - Libre`;
-                }
+                alert("Por favor, ingrese una placa válida.");
             }
         }
 
-        document.addEventListener("DOMContentLoaded", () => {
-            const map = L.map('mapa-gratis').setView([-6.827473121649184, -79.92381392291851], 19);
+        function generarEstructuraDOM() {
+            const tableBody = document.getElementById('tableBody');
+            const usersBody = document.getElementById('usersBody');
+            const gridContainer = document.getElementById('terreno-exterior');
 
+            espacios.forEach(id => {
+                tableBody.innerHTML += `
+                    <tr id="row-${id}">
+                        <td><strong>Estacionamiento ${id}</strong></td>
+                        <td>Zona</td>
+                        <td><span id="badge-${id}" class="badge parked">Libre</span></td>
+                        <td><button id="btn-${id}" class="btn-action btn-primary" onclick="interactuarEspacio('${id}')">Ocupar Espacio</button></td>
+                    </tr>`;
+                
+                usersBody.innerHTML += `
+                    <tr>
+                        <td id="user-name-${id}">Usuario ${id}</td>
+                        <td><span id="user-${id}" class="badge parked">Libre</span></td>
+                    </tr>`;
+
+                const div = document.createElement('div');
+                div.id = `spot-${id}`;
+                div.className = `spot green`;
+                div.textContent = id;
+                div.onclick = () => interactuarEspacio(id);
+                gridContainer.appendChild(div);
+            });
+        }
+
+        function interactuarEspacio(id) {
+            if (miPlaca === "") {
+                alert("Debe registrar su placa primero.");
+                return;
+            }
+
+            const btn = document.getElementById(`btn-${id}`);
+            
+            if (btn.disabled) return;
+
+            const estaLibre = btn.classList.contains('btn-primary');
+            
+            if (estaLibre) {
+                actualizarEstadoFirebase(id, true, miPlaca);
+                iniciarTemporizador(id, 60000);
+            } else {
+                actualizarEstadoFirebase(id, false, "");
+                limpiarTemporizador(id);
+            }
+        }
+
+        function actualizarEstadoFirebase(id, ocupado, placaAsignada) {
+            database.ref('estacionamientos/' + id).set({ estado: ocupado, placa: placaAsignada });
+        }
+
+        function escucharFirebase() {
+            database.ref('estacionamientos').on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    estadoGlobal = data;
+                    if (miPlaca !== "") {
+                        Object.keys(data).forEach(id => {
+                            sincronizarUI(id, data[id].estado, data[id].placa);
+                        });
+                    }
+                }
+            });
+        }
+
+        function sincronizarUI(id, ocupado, placaOcupante) {
+            const btn = document.getElementById(`btn-${id}`);
+            const badge = document.getElementById(`badge-${id}`);
+            const userBadge = document.getElementById(`user-${id}`);
+            const userName = document.getElementById(`user-name-${id}`);
+            const spot = document.getElementById(`spot-${id}`);
+
+            if (!btn || !badge || !userBadge || !spot || !userName) return;
+
+            if (ocupado) {
+                badge.className = 'badge transit';
+                badge.textContent = 'Ocupado';
+                userBadge.className = 'badge transit';
+                userBadge.textContent = 'Ocupado';
+                userName.textContent = `Placa: ${placaOcupante}`;
+                spot.className = 'spot red';
+
+                if (placaOcupante === miPlaca) {
+                    btn.className = 'btn-action btn-secondary';
+                    btn.textContent = 'Liberar Espacio';
+                    btn.disabled = false;
+                } else {
+                    btn.className = 'btn-action btn-disabled';
+                    btn.textContent = `Ocupado (${placaOcupante})`;
+                    btn.disabled = true;
+                }
+            } else {
+                btn.className = 'btn-action btn-primary';
+                btn.textContent = 'Ocupar Espacio';
+                btn.disabled = false;
+                
+                badge.className = 'badge parked';
+                badge.textContent = 'Libre';
+                userBadge.className = 'badge parked';
+                userBadge.textContent = 'Libre';
+                userName.textContent = `Usuario ${id}`;
+                spot.className = 'spot green';
+            }
+        }
+
+        function iniciarTemporizador(id, tiempoMs) {
+            limpiarTemporizador(id);
+            temporizadoresLocales[id] = setTimeout(() => {
+                espacioEnPregunta = id;
+                document.getElementById('timerSpaceId').textContent = id;
+                document.getElementById('timerModal').style.display = 'flex';
+            }, tiempoMs);
+        }
+
+        function limpiarTemporizador(id) {
+            if (temporizadoresLocales[id]) {
+                clearTimeout(temporizadoresLocales[id]);
+                delete temporizadoresLocales[id];
+            }
+        }
+
+        function accionTemporizador(accion) {
+            document.getElementById('timerModal').style.display = 'none';
+            if (accion === 'liberar') {
+                actualizarEstadoFirebase(espacioEnPregunta, false, "");
+                limpiarTemporizador(espacioEnPregunta);
+            } else if (accion === 'extender') {
+                iniciarTemporizador(espacioEnPregunta, 30000);
+            }
+            espacioEnPregunta = null;
+        }
+
+        function inicializarMapa() {
+            const map = L.map('mapa-gratis').setView([-6.827473121649184, -79.92381392291851], 19);
+            
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Tiles &copy; Esri',
                 maxZoom: 19
             }).addTo(map);
 
@@ -543,50 +781,51 @@
                 popupAnchor: [0, -21]     
             });
 
+            // Se agregaron las coordenadas de todas las series (A hasta F)
             const parkingSpotsCoords = [
-                [-6.827059401566791, -79.92388757628905],
-                [-6.826964507865743, -79.92367638534489],
-                [-6.826999795148236, -79.92374947553299],
-                [-6.827091675230061, -79.92382994179515],
-                [-6.827085683052319, -79.9239788043849]  
-            ];
-
-            parkingSpotsCoords.forEach((coord, index) => {
-                L.marker(coord, { icon: parkingIcon })
-                    .addTo(map)
-                    .bindPopup(`<b>Estacionamiento A${index + 1}</b><br>Zona Exterior Asignada`);
-            });
-
-            const gridContainer = document.getElementById('terreno-exterior');
-            
-            const spotsData = [
-                { id: 'A1', status: 'green' }, { id: 'A2', status: 'green' }, { id: 'A3', status: 'red' },
-                { id: 'A4', status: 'green' }, { id: 'A5', status: 'yellow' }, { id: 'A6', status: 'yellow' },
-                { id: 'B1', status: 'red' }, { id: 'B2', status: 'red' }, { id: 'B3', status: 'green' },
-                { id: 'B4', status: 'green' }, { id: 'B5', status: 'green' }, { id: 'B6', status: 'yellow' },
-            ];
-
-            spotsData.forEach(spot => {
-                const div = document.createElement('div');
-                div.className = `spot ${spot.status}`;
-                div.textContent = spot.id;
-                div.title = `Estacionamiento ${spot.id} - ${spot.status === 'green' ? 'Libre' : spot.status === 'red' ? 'Ocupado' : 'Reservado'}`;
+                { lat: -6.826896952567946, lng: -79.92368676791544, name: "A1" },
+                { lat: -6.82693025235926,  lng: -79.92373774503297, name: "A2" },
+                { lat: -6.826963599061987, lng: -79.92378404622772, name: "A3" },
+                { lat: -6.827056810746118, lng: -79.92393089715614, name: "A4" },
+                { lat: -6.827171064060995, lng: -79.92392268316294, name: "A5" },
                 
-                div.addEventListener('click', () => {
-                    if(div.classList.contains('green')) {
-                        if(confirm(`El espacio ${spot.id} está libre. ¿Deseas marcarlo como ocupado en tiempo real?`)) {
-                            div.className = 'spot red';
-                        }
-                    } else if (div.classList.contains('red')) {
-                        if(confirm(`El espacio ${spot.id} está ocupado. ¿Deseas liberarlo?`)) {
-                            div.className = 'spot green';
-                        }
-                    }
-                });
+                { lat: -6.826916952567946, lng: -79.92365676791544, name: "B1" },
+                { lat: -6.82695025235926,  lng: -79.92370774503297, name: "B2" },
+                { lat: -6.826983599061987, lng: -79.92375404622772, name: "B3" },
+                { lat: -6.827076810746118, lng: -79.92390089715614, name: "B4" },
+                { lat: -6.827191064060995, lng: -79.92389268316294, name: "B5" },
 
-                gridContainer.appendChild(div);
+                { lat: -6.827278042684312, lng: -79.92435014148151, name: "C1" },
+                { lat: -6.827256071370563, lng: -79.9243239899465,  name: "C2" },
+                { lat: -6.8272460844094365, lng: -79.92429582675493, name: "C3" },
+                { lat: -6.827233434258377, lng: -79.92428174515915, name: "C4" },
+                { lat: -6.827402546776524, lng: -79.92429247399403, name: "C5" },
+
+                { lat: -6.827377912279561, lng: -79.92426229913679, name: "D1" },
+                { lat: -6.827369257629711, lng: -79.92421670158856, name: "D2" },
+                { lat: -6.8273459519478585, lng: -79.92418249935093, name: "D3" },
+                { lat: -6.827326641524896, lng: -79.92414762648119, name: "D4" },
+                { lat: -6.827304681131366, lng: -79.92411478985487, name: "D5" },
+
+                { lat: -6.827261728812469, lng: -79.92404912298207, name: "E1" },
+                { lat: -6.827241754890228, lng: -79.9240149248209,  name: "E2" },
+                { lat: -6.827219783574814, lng: -79.92398944383807, name: "E3" },
+                { lat: -6.82718649370104,  lng: -79.92412556593058, name: "E4" },
+                { lat: -6.827162524990505, lng: -79.92408332114326, name: "E5" },
+
+                { lat: -6.827119425936285, lng: -79.92382847930676, name: "F1" },
+                { lat: -6.827102780996192, lng: -79.92380098666739, name: "F2" },
+                { lat: -6.8270808096744044, lng: -79.92377818789328, name: "F3" },
+                { lat: -6.827052846172469, lng: -79.92373594310592, name: "F4" },
+                { lat: -6.827001557816475, lng: -79.92387507280762, name: "F5" }
+            ];
+
+            parkingSpotsCoords.forEach((spot) => {
+                L.marker([spot.lat, spot.lng], { icon: parkingIcon })
+                    .addTo(map)
+                    .bindPopup(`<b>Estacionamiento ${spot.name}</b><br>Zona de Estacionamiento`);
             });
-        });
+        }
     </script>
 </body>
 </html>
