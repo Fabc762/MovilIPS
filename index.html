@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Innovadores | Control de Tránsito - Campus Chiclayo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        :root {
+            --primary-blue: #005088;
+            --primary-dark: #003a63;
+            --accent-green: #84BD00;
+            --status-red: #ef4444;
+            --status-yellow: #f59e0b;
+            --status-green: #22c55e;
+            --bg-body: #f1f5f9;
+            --bg-panel: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+            --radius-md: 8px;
+            --radius-lg: 12px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 260px;
+            background-color: var(--bg-panel);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-sm);
+            z-index: 10;
+        }
+
+        .logo-container {
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo-container img {
+            width: 45px;
+            height: auto;
+        }
+
+        .logo-container h1 {
+            font-size: 18px;
+            color: var(--primary-blue);
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .nav-menu {
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 24px;
+            color: var(--text-muted);
+            text-decoration: none;
+            gap: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+
+        .nav-item:hover:not(.disabled), .nav-item.active {
+            background-color: #f8fafc;
+            color: var(--primary-blue);
+            border-left-color: var(--primary-blue);
+        }
+
+        .nav-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .nav-item .material-icons-round {
+            font-size: 22px;
+        }
+
+        .team-box {
+            margin-top: auto;
+            padding: 20px 24px;
+            border-top: 1px solid var(--border-color);
+            background-color: #f8fafc;
+        }
+
+        .team-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--primary-blue);
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .team-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .team-member {
+            font-size: 13px;
+            color: var(--text-main);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .team-member::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            background-color: var(--accent-green);
+            border-radius: 50%;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .top-header {
+            background-color: var(--primary-blue);
+            color: white;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-md);
+        }
+
+        .top-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .dashboard-grid {
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 24px;
+        }
+
+        .map-card {
+            grid-column: 1 / -1;
+            background: var(--bg-panel);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+            position: relative;
+        }
+
+        .map-toolbar {
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 10px;
+            background: #f8fafc;
+            z-index: 1000;
+        }
+
+        .map-btn {
+            background: white;
+            border: 1px solid var(--border-color);
+            padding: 6px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .map-btn.active {
+            background: var(--primary-blue);
+            color: white;
+            border-color: var(--primary-blue);
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+            background-color: #cbd5e1;
+        }
+
+        .parking-grid {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: grid;
+            grid-template-columns: repeat(6, 40px);
+            gap: 4px;
+            background: rgba(0,0,0,0.4);
+            padding: 8px;
+            border-radius: 8px;
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+        }
+
+        .spot {
+            width: 40px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 11px;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: transform 0.1s, background-color 0.3s;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .spot:hover {
+            transform: scale(1.05);
+        }
+
+        .spot.green { background-color: var(--status-green); }
+        .spot.red { background-color: var(--status-red); }
+        .spot.yellow { background-color: var(--status-yellow); color: var(--text-main); }
+
+        .table-card {
+            background: var(--bg-panel);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        .card-header {
+            margin-bottom: 16px;
+        }
+
+        .card-header h3 {
+            color: var(--text-main);
+            font-size: 18px;
+        }
+
+        .card-header p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8fafc;
+            color: var(--text-muted);
+            padding: 12px 16px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+            font-size: 14px;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+
+        .badge.transit { background: #fee2e2; color: #991b1b; } 
+        .badge.parked { background: #dcfce7; color: #15803d; } 
+
+        .btn-action {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13px;
+            transition: 0.2s;
+        }
+
+        .btn-primary { background: var(--primary-blue); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        
+        .btn-secondary { background: #f1f5f9; color: var(--text-main); border: 1px solid var(--border-color); }
+        .btn-secondary:hover { background: #e2e8f0; }
+
+        .info-card {
+            background: var(--bg-panel);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .info-section {
+            border-left: 4px solid var(--primary-blue);
+            padding-left: 14px;
+        }
+
+        .info-section.climate {
+            border-left-color: var(--status-green);
+        }
+
+        .info-section h4 {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 4px;
+        }
+
+        .info-section p {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo-container">
+            <img src="https://static.wikia.nocookie.net/logopedia/images/7/7b/Innova_Schools_escudo.svg/revision/latest/scale-to-width-down/1200?cb=20200925143606&path-prefix=es" alt="Logo Innova">
+            <h1>Innova<br>Schools</h1>
+        </div>
+        <nav class="nav-menu">
+            <a href="#" class="nav-item active" onclick="activarMenu(this)">
+                <span class="material-icons-round">map</span> Mapa en Vivo
+            </a>
+            <a href="#" class="nav-item" onclick="activarMenu(this)">
+                <span class="material-icons-round">grid_view</span> Asignación de estacionamiento
+            </a>
+            <a href="#" class="nav-item disabled">
+                <span class="material-icons-round">warning_amber</span> Alertas en proceso
+            </a>
+        </nav>
+
+        <div class="team-box">
+            <div class="team-title">
+                <span class="material-icons-round" style="font-size: 16px;">groups</span>
+                Grupo 5
+            </div>
+            <ul class="team-list">
+                <li class="team-member">Gianella</li>
+                <li class="team-member">Pamela</li>
+                <li class="team-member">Fernando</li>
+                <li class="team-member">Fabrizio</li>
+                <li class="team-member">Adolfo</li>
+            </ul>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        
+        <header class="top-header">
+            <h2>Bienvenido, Operador de Tránsito</h2>
+        </header>
+
+        <div class="dashboard-grid">
+            
+            <div class="map-card">
+                <div class="map-toolbar">
+                    <button class="map-btn active" onclick="activarBotonMapa(this)">Satélite</button>
+                    <button class="map-btn" onclick="activarBotonMapa(this)">Zonas Asignadas</button>
+                </div>
+                <div class="map-container" id="mapa-gratis">
+                    <div class="parking-grid" id="terreno-exterior"></div>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <div class="card-header">
+                    <h3>Lugares de Estacionamiento Libres</h3>
+                    <p>Sincronización en tiempo real con los cuadrantes del mapa satelital.</p>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Espacio ID</th>
+                            <th>Zona</th>
+                            <th>Estado Actual</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Estacionamiento A1</strong></td>
+                            <td>Terreno Exterior</td>
+                            <td><span class="badge parked">Libre</span></td>
+                            <td>
+                                <button class="btn-action btn-primary" onclick="gestionarEspacio(this, 'A1')">Reservar Espacio</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Estacionamiento A2</strong></td>
+                            <td>Terreno Exterior</td>
+                            <td><span class="badge parked">Libre</span></td>
+                            <td>
+                                <button class="btn-action btn-primary" onclick="gestionarEspacio(this, 'A2')">Reservar Espacio</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Estacionamiento A3</strong></td>
+                            <td>Terreno Exterior</td>
+                            <td><span class="badge transit">Ocupado</span></td>
+                            <td>
+                                <button class="btn-action btn-secondary" onclick="gestionarEspacio(this, 'A3')">Liberar Espacio</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="info-card">
+                <div class="card-header" style="margin-bottom: 4px;">
+                    <h3>Mejora del Tránsito Vehicular</h3>
+                    <p>Impacto estratégico del proyecto en los accesos del campus.</p>
+                </div>
+                
+                <div class="info-section">
+                    <h4>Tránsito en la entrada y salida del colegio</h4>
+                    <p>Al derivar los vehículos al terreno privado de manera organizada, se elimina la congestión en las puertas principales, liberando las vías públicas para un flujo escolar seguro y fluido.</p>
+                </div>
+
+                <div class="info-section climate">
+                    <h4>Acción por el clima</h4>
+                    <p>Reducir las colas de autos reduce el tiempo de motores encendidos en ralentí ("idle"). Menos tiempo buscando espacio se traduce en una reducción directa de emisiones de CO₂ alrededor del colegio.</p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        function activarMenu(elemento) {
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            elemento.classList.add('active');
+        }
+
+        function activarBotonMapa(elemento) {
+            document.querySelectorAll('.map-btn').forEach(el => el.classList.remove('active'));
+            elemento.classList.add('active');
+        }
+
+        function gestionarEspacio(btn, espacioId) {
+            const row = btn.closest('tr');
+            const badge = row.querySelector('.badge');
+            
+            const mapSpots = Array.from(document.querySelectorAll('.spot'));
+            const mapSpot = mapSpots.find(spot => spot.textContent === espacioId);
+
+            if (btn.classList.contains('btn-primary')) {
+                btn.className = 'btn-action btn-secondary';
+                btn.textContent = 'Liberar Espacio';
+                badge.className = 'badge transit';
+                badge.textContent = 'Ocupado';
+                
+                if(mapSpot) {
+                    mapSpot.className = 'spot red';
+                    mapSpot.title = `Estacionamiento ${espacioId} - Ocupado`;
+                }
+            } else {
+                btn.className = 'btn-action btn-primary';
+                btn.textContent = 'Reservar Espacio';
+                badge.className = 'badge parked';
+                badge.textContent = 'Libre';
+                
+                if(mapSpot) {
+                    mapSpot.className = 'spot green';
+                    mapSpot.title = `Estacionamiento ${espacioId} - Libre`;
+                }
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const map = L.map('mapa-gratis').setView([-6.827473121649184, -79.92381392291851], 19);
+
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri',
+                maxZoom: 19
+            }).addTo(map);
+
+            const parkingIcon = L.icon({
+                iconUrl: 'https://www.cintermex.com/assets/js/bootstrap-gridmanager/otr/tinymce/plugins/jsplus_file_manager/alphamanager/uploads//imagenes/fotos_generales/Fotos%20factura%20en%20linea/LogoEstacionamiento1.png',
+                iconSize: [42, 42],       
+                iconAnchor: [21, 21],     
+                popupAnchor: [0, -21]     
+            });
+
+            const parkingSpotsCoords = [
+                [-6.827059401566791, -79.92388757628905],
+                [-6.826964507865743, -79.92367638534489],
+                [-6.826999795148236, -79.92374947553299],
+                [-6.827091675230061, -79.92382994179515],
+                [-6.827085683052319, -79.9239788043849]  
+            ];
+
+            parkingSpotsCoords.forEach((coord, index) => {
+                L.marker(coord, { icon: parkingIcon })
+                    .addTo(map)
+                    .bindPopup(`<b>Estacionamiento A${index + 1}</b><br>Zona Exterior Asignada`);
+            });
+
+            const gridContainer = document.getElementById('terreno-exterior');
+            
+            const spotsData = [
+                { id: 'A1', status: 'green' }, { id: 'A2', status: 'green' }, { id: 'A3', status: 'red' },
+                { id: 'A4', status: 'green' }, { id: 'A5', status: 'yellow' }, { id: 'A6', status: 'yellow' },
+                { id: 'B1', status: 'red' }, { id: 'B2', status: 'red' }, { id: 'B3', status: 'green' },
+                { id: 'B4', status: 'green' }, { id: 'B5', status: 'green' }, { id: 'B6', status: 'yellow' },
+            ];
+
+            spotsData.forEach(spot => {
+                const div = document.createElement('div');
+                div.className = `spot ${spot.status}`;
+                div.textContent = spot.id;
+                div.title = `Estacionamiento ${spot.id} - ${spot.status === 'green' ? 'Libre' : spot.status === 'red' ? 'Ocupado' : 'Reservado'}`;
+                
+                div.addEventListener('click', () => {
+                    if(div.classList.contains('green')) {
+                        if(confirm(`El espacio ${spot.id} está libre. ¿Deseas marcarlo como ocupado en tiempo real?`)) {
+                            div.className = 'spot red';
+                        }
+                    } else if (div.classList.contains('red')) {
+                        if(confirm(`El espacio ${spot.id} está ocupado. ¿Deseas liberarlo?`)) {
+                            div.className = 'spot green';
+                        }
+                    }
+                });
+
+                gridContainer.appendChild(div);
+            });
+        });
+    </script>
+</body>
+</html>
