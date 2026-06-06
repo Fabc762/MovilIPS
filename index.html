@@ -85,20 +85,30 @@
             padding: 24px;
             display: flex;
             align-items: center;
-            gap: 12px;
+            justify-content: space-between;
             border-bottom: 1px solid var(--border-color);
         }
 
-        .logo-container img {
+        .logo-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-left img {
             width: 45px;
             height: auto;
         }
 
-        .logo-container h1 {
+        .logo-left h1 {
             font-size: 18px;
             color: var(--primary-blue);
             font-weight: 700;
             line-height: 1.2;
+        }
+
+        .mobile-team {
+            display: none; /* Oculto en PC */
         }
 
         .nav-menu {
@@ -381,16 +391,6 @@
             border-color: var(--primary-blue);
         }
 
-        .btn-close {
-            background: var(--status-red);
-            color: white;
-            padding: 10px;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
         /* --- MEDIA QUERIES PARA CELULAR --- */
         @media (max-width: 768px) {
             body {
@@ -403,8 +403,6 @@
                 width: 100%;
                 height: auto;
                 flex-direction: row;
-                justify-content: space-between;
-                align-items: center;
                 border-right: none;
                 border-bottom: 1px solid var(--border-color);
                 padding: 10px 15px;
@@ -413,6 +411,32 @@
             .logo-container {
                 padding: 0;
                 border-bottom: none;
+                width: 100%;
+            }
+
+            /* Mostrar y dar estilo al "Grupo 5" solo en celular */
+            .mobile-team {
+                display: flex !important;
+                flex-direction: column;
+                align-items: flex-end;
+                text-align: right;
+            }
+
+            .mobile-team-title {
+                font-size: 12px;
+                color: var(--primary-blue);
+                font-weight: 700;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+
+            .mobile-team-names {
+                font-size: 9px;
+                color: var(--text-muted);
+                max-width: 120px;
+                line-height: 1.2;
+                margin-top: 2px;
             }
 
             /* Ocultar elementos específicos en celular */
@@ -435,11 +459,16 @@
                 height: 350px;
             }
 
-            .parking-grid {
-                transform: scale(0.85); /* Reduce un poco el mini mapa en celular */
-                transform-origin: top right;
-                top: 10px;
-                right: 10px;
+            /* Estilos para el grid de estacionamientos cuando se mueva en celular */
+            .parking-grid.mobile-grid {
+                position: relative;
+                top: auto;
+                right: auto;
+                margin: 0 auto;
+                transform: scale(0.95);
+                transform-origin: center;
+                justify-content: center;
+                box-shadow: var(--shadow-md);
             }
 
             .table-card > div {
@@ -463,7 +492,7 @@
             <h3 style="color: var(--primary-blue);">Identificación de Vehículo</h3>
             <p>Por favor, ingresa el número de tu placa para acceder al sistema y reservar un espacio.</p>
             <input type="text" id="inputPlaca" class="input-placa" placeholder="EJ: ABC-123" maxlength="8">
-            <button class="btn-action btn-primary" onclick="registrarPlaca()">Entrar al Sistema</button>
+            <button class="btn-action btn-primary" onclick="registrarPlaca()">Ingresar</button>
         </div>
     </div>
 
@@ -480,9 +509,18 @@
 
     <aside class="sidebar">
         <div class="logo-container">
-            <img src="innova.jpg" alt="Logo" onerror="this.src='https://via.placeholder.com/45'">
-            <h1>Innova<br>Schools</h1>
+            <div class="logo-left">
+                <img src="innova.jpg" alt="Logo" onerror="this.src='https://via.placeholder.com/45'">
+                <h1>Innova<br>Schools</h1>
+            </div>
+            <div class="mobile-team">
+                <div class="mobile-team-title">
+                    <span class="material-icons-round" style="font-size: 14px;">groups</span> Grupo 5
+                </div>
+                <div class="mobile-team-names">Gianella, Pamela, Fernando, Fabrizio, Adolfo</div>
+            </div>
         </div>
+        
         <nav class="nav-menu">
             <a href="#" class="nav-item active" onclick="cambiarMenuActivo(event, this)"><span class="material-icons-round">map</span> Mapa Satelital</a>
             <a href="#" class="nav-item" onclick="cambiarMenuActivo(event, this)"><span class="material-icons-round">grid_view</span> Asignación</a>
@@ -571,6 +609,22 @@
             elemento.classList.add('active');
         }
 
+        // Función para mover el grid de estacionamiento en la vista móvil
+        function ajustarVistaMovil() {
+            const grid = document.getElementById('terreno-exterior');
+            if (window.innerWidth <= 768) {
+                // Lo saca del mapa y lo pone debajo de las tablas en la vista principal
+                document.querySelector('.dashboard-grid').appendChild(grid);
+                grid.classList.add('mobile-grid');
+            } else {
+                // Lo regresa adentro del mapa en PC
+                document.getElementById('mapa-gratis').appendChild(grid);
+                grid.classList.remove('mobile-grid');
+            }
+        }
+        
+        window.addEventListener('resize', ajustarVistaMovil);
+
         const firebaseConfig = {
             apiKey: "AIzaSyCkrK_7WxbIqJL20uMssYx-1b3BS5punQI",
             authDomain: "innovaparking-b7876.firebaseapp.com",
@@ -586,7 +640,6 @@
         }
         const database = firebase.database();
 
-        // Se agregaron las series completas hasta la F
         const espacios = [
             'A1', 'A2', 'A3', 'A4', 'A5', 
             'B1', 'B2', 'B3', 'B4', 'B5', 
@@ -614,6 +667,7 @@
             generarEstructuraDOM();
             inicializarMapa();
             escucharFirebase();
+            ajustarVistaMovil(); // Ejecutar ajuste móvil al inicio
         });
 
         function registrarPlaca() {
@@ -781,7 +835,6 @@
                 popupAnchor: [0, -21]     
             });
 
-            // Se agregaron las coordenadas de todas las series (A hasta F)
             const parkingSpotsCoords = [
                 { lat: -6.826896952567946, lng: -79.92368676791544, name: "A1" },
                 { lat: -6.82693025235926,  lng: -79.92373774503297, name: "A2" },
