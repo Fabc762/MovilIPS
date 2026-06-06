@@ -414,7 +414,6 @@
                 width: 100%;
             }
 
-            /* Mostrar y dar estilo al "Grupo 5" solo en celular */
             .mobile-team {
                 display: flex !important;
                 flex-direction: column;
@@ -439,7 +438,6 @@
                 margin-top: 2px;
             }
 
-            /* Ocultar elementos específicos en celular */
             .nav-menu, .top-header, .map-toolbar, .team-box {
                 display: none !important;
             }
@@ -459,7 +457,6 @@
                 height: 350px;
             }
 
-            /* Estilos para el grid de estacionamientos cuando se mueva en celular */
             .parking-grid.mobile-grid {
                 position: relative;
                 top: auto;
@@ -649,6 +646,7 @@
             'F1', 'F2', 'F3', 'F4', 'F5'
         ];
         let temporizadoresLocales = {};
+        let temporizadorModal = null; // Nuevo temporizador de 20 segundos
         let espacioEnPregunta = null;
         
         let miPlaca = "";
@@ -667,7 +665,7 @@
             generarEstructuraDOM();
             inicializarMapa();
             escucharFirebase();
-            ajustarVistaMovil(); // Ejecutar ajuste móvil al inicio
+            ajustarVistaMovil();
         });
 
         function registrarPlaca() {
@@ -737,7 +735,17 @@
         }
 
         function actualizarEstadoFirebase(id, ocupado, placaAsignada) {
-            database.ref('estacionamientos/' + id).set({ estado: ocupado, placa: placaAsignada });
+            const refEspacio = database.ref('estacionamientos/' + id);
+            
+            if (ocupado) {
+                // Magia de Firebase: Si se sale de la página o pierde internet, lo libera
+                refEspacio.onDisconnect().set({ estado: false, placa: "" });
+            } else {
+                // Si lo libera manualmente, cancelamos la regla de desconexión
+                refEspacio.onDisconnect().cancel();
+            }
+            
+            refEspacio.set({ estado: ocupado, placa: placaAsignada });
         }
 
         function escucharFirebase() {
@@ -800,6 +808,15 @@
                 espacioEnPregunta = id;
                 document.getElementById('timerSpaceId').textContent = id;
                 document.getElementById('timerModal').style.display = 'flex';
+
+                // Temporizador adicional: Si no responde en 20 segundos, lo libera solo
+                clearTimeout(temporizadorModal);
+                temporizadorModal = setTimeout(() => {
+                    if (document.getElementById('timerModal').style.display === 'flex' && espacioEnPregunta === id) {
+                        accionTemporizador('liberar');
+                    }
+                }, 20000); // 20 Segundos
+
             }, tiempoMs);
         }
 
@@ -812,11 +829,13 @@
 
         function accionTemporizador(accion) {
             document.getElementById('timerModal').style.display = 'none';
+            clearTimeout(temporizadorModal); // Frena los 20 segundos si el usuario tocó un botón
+            
             if (accion === 'liberar') {
                 actualizarEstadoFirebase(espacioEnPregunta, false, "");
                 limpiarTemporizador(espacioEnPregunta);
             } else if (accion === 'extender') {
-                iniciarTemporizador(espacioEnPregunta, 30000);
+                iniciarTemporizador(espacioEnPregunta, 30000); // Dar 30 segundos extra
             }
             espacioEnPregunta = null;
         }
